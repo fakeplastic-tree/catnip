@@ -91,7 +91,10 @@ function playerColor(playerId: string): "blue" | "red" {
 
 export function connectLobby() {
   if (socket && socket.readyState === WebSocket.OPEN) return;
-  socket = new WebSocket("ws://localhost:3001");
+  
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const host = window.location.hostname === "localhost" ? "localhost:3001" : window.location.host;
+  socket = new WebSocket(`${protocol}//${host}`);
 
   socket.addEventListener("open", () => {
     // Send our identity right away so the server knows who we are before
