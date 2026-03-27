@@ -206,10 +206,18 @@
     
     return "Click to play.";
   }
+
+  function handleDismiss(e: MouseEvent) {
+    if ((e.target as HTMLElement).closest('button')) return;
+    $selectedCardIdStore = null;
+    $selectedUnitIdStore = null;
+  }
 </script>
 
 {#if $selectedUnit}
-  <div class="unit-info">
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div class="unit-info" on:click={handleDismiss}>
     <div class="header">
       <h3>{$selectedUnit.name}</h3>
       <div class="owner" class:mine={$selectedUnit.owner === $playerIdStore}>
@@ -346,23 +354,45 @@
     position: absolute;
     top: 20px;
     left: 20px;
-    width: 260px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 3px solid #ffcada; /* Soft pink border */
+    width: 280px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 3px solid #ffcada;
     border-radius: 20px;
     padding: 16px;
     color: #4a4a4a;
-    box-shadow: 0 8px 24px rgba(255, 105, 180, 0.2);
-    z-index: 1000;
-    pointer-events: auto; /* Allow clicking the activate buttons */
-    backdrop-filter: blur(8px);
-    transition: all 0.2s ease;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 2100; /* Higher than card wrappers to prevent poking through */
+    pointer-events: auto;
+    backdrop-filter: blur(16px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @media (orientation: portrait) {
+    .unit-info {
+      top: auto;
+      bottom: 0px;
+      left: 0;
+      right: 0;
+      width: 100%;
+      max-height: 50vh;
+      overflow-y: auto;
+      border-radius: 24px 24px 0 0;
+      border: none;
+      border-top: 3px solid #ff6090; /* Accent color on top border */
+      padding: 20px;
+      box-shadow: 0 -20px 50px rgba(0,0,0,0.5);
+    }
+    
+    .header h3 { font-size: 1.2rem !important; }
+    .description { font-size: 0.8rem !important; }
+    .stats-grid { flex-direction: row !important; flex-wrap: wrap; gap: 15px !important; }
+    .stat { flex: 1; min-width: 80px; }
   }
 
   h3 {
     margin: 0;
     font-size: 1.4rem;
-    color: #ff6090; /* Vibrant cat-pink */
+    color: #ff6090;
   }
 
   .header {

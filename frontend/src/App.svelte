@@ -1,5 +1,6 @@
 <script lang="ts">
   import MapView from './ui/mapView.svelte';
+  import GameSidebar from './ui/GameSidebar.svelte';
   import CardHand from './ui/cardHand.svelte';
   import UnitInfo from './ui/UnitInfo.svelte';
   import DeckBuilder from './ui/deckBuilder.svelte';
@@ -23,6 +24,7 @@
   let privateCodeInput = '';
   let showJoinPrivate = false;
   let nameInput = $playerNameStore;
+  let showLog = false;
 
   $: if ($lobbyStatusStore === 'in_match') {
     view = 'game';
@@ -96,9 +98,18 @@
   {:else if view === 'game'}
     {#if $gameStateStore}
       <div class="game-ui">
-        <UnitInfo />
-        <MapView />
-        <CardHand />
+        <div class="info-layer">
+          <UnitInfo />
+        </div>
+        <div class="map-layer">
+          <MapView />
+        </div>
+        <div class="hand-layer">
+          <CardHand />
+        </div>
+        <div class="sidebar-layer">
+          <GameSidebar {showLog} toggleLog={() => showLog = !showLog} />
+        </div>
       </div>
     {:else}
       <p class="connecting">Connecting to match...</p>
@@ -303,11 +314,50 @@
 
   /* Game view */
   .game-ui {
+    display: grid;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    overflow: hidden;
+  }
+
+  /* Default (Portrait) */
+  @media (orientation: portrait) {
+    .game-ui {
+      grid-template-rows: 1fr auto;
+      grid-template-columns: 100%;
+    }
+    .map-layer { grid-row: 1; grid-column: 1; }
+    .hand-layer { grid-row: 2; grid-column: 1; }
+    .info-layer { grid-row: 1 / 3; grid-column: 1; z-index: 5000; pointer-events: none; }
+    .sidebar-layer { grid-row: 1; grid-column: 1; z-index: 500; pointer-events: none; }
+  }
+
+  /* Landscape (Desktop/Tablet) */
+  @media (orientation: landscape) {
+    .game-ui {
+      grid-template-columns: 1fr 320px;
+      grid-template-rows: 1fr auto;
+    }
+    .map-layer { grid-row: 1; grid-column: 1; }
+    .hand-layer { grid-row: 2; grid-column: 1; }
+    .sidebar-layer { grid-row: 1 / 3; grid-column: 2; }
+    /* Ensure info layer is strictly above map and cards */
+    .info-layer { grid-row: 1 / 3; grid-column: 1; z-index: 5000; pointer-events: none; }
+  }
+
+  /* Shared layer styles */
+  .map-layer, .hand-layer, .info-layer, .sidebar-layer {
     position: relative;
     width: 100%;
     height: 100%;
-    background: #eef2f3;
+    min-height: 0;
   }
+
+  .info-layer { pointer-events: none; }
+  .info-layer > :global(*) { pointer-events: auto; }
+  .sidebar-layer { pointer-events: none; }
+  .sidebar-layer > :global(*) { pointer-events: auto; }
 
   .connecting {
     display: flex;

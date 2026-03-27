@@ -271,13 +271,15 @@ function handleServerEvent(serverEvent: any, playerId: string) {
     }
     case "unit_molted": {
       const { playerId: pid, fromType, toType } = serverEvent;
-      push(pid, `✨ ${pid}'s ${fromType} molted into ${toType}!`);
+      const name = getPlayerName(pid);
+      push(pid, `✨ ${name}'s ${fromType} molted into ${toType}!`);
       break;
     }
     case "turn_ended": {
       const { playerId: pid, turn: t } = serverEvent;
+      const name = getPlayerName(pid);
       combatLogStore.update(log => [...log,
-        { turn: t, playerId: pid, text: `${pid} ends their turn.`, color: playerColor(pid) },
+        { turn: t, playerId: pid, text: `${name} ends their turn.`, color: playerColor(pid) },
         { turn: t + 1, playerId: "", text: `Turn ${t + 1}`, color: "neutral" as const, isHeader: true }
       ]);
       break;
