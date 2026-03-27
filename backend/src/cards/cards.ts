@@ -279,11 +279,11 @@ export const CARD_LIBRARY: Record<string, Omit<Card, "id">> = {
   cardboard_box: {
     templateId: "cardboard_box",
     name: "Cardboard Box",
-    description: "Gives a unit 10 temporary health.",
+    description: "Unit hides in a box. Absorbs 1 hit, or collapses at end of turn.",
     type: "instinct",
     cost: 2,
     target: "unit",
-    effects: [{ type: "shield", params: { amount: 10 } }]
+    effects: [{ type: "shield", params: {} }]
   },
 
   purr: {

@@ -112,6 +112,8 @@ export function processDamageAndDeath(state: GameState): {
   const allUnits = Object.values(state.units);
   const allBuildings = Object.values(state.buildings);
 
+  const getPlayerName = (pid: string) => state.players[pid]?.name ?? pid;
+
   // --- phase 1: build the initiative list ---
   // every combatant that has an adjacant enemy gets an attack intent
   const intents: AttackIntent[] = [];
@@ -177,9 +179,34 @@ export function processDamageAndDeath(state: GameState): {
       }
     }
 
+    const attackerType = attackerIsBuilding ? (attacker as Building).type : (attacker as Unit).type;
+    const targetType = targetIsBuilding ? (target as Building).type : (target as Unit).type;
+
     if (dmg > 0 && !targetIsBuilding) {
       (target as Unit).wasHitLastTurn = true;
-      console.log(`[combat] ${target.type} hit! wasHitLastTurn set to true for next turn.`);
+      console.log(`[combat] ${getPlayerName(targetOwner)}'s ${targetType} hit! wasHitLastTurn set to true for next turn.`);
+    }
+
+    // Cardboard Box — absorbs the first hit entirely, then the shield breaks
+    if (!targetIsBuilding) {
+      const boxIdx = (target as Unit).modifiers.findIndex(m => m.source === "cardboard_box");
+      if (boxIdx !== -1 && dmg > 0) {
+        (target as Unit).modifiers.splice(boxIdx, 1);
+        console.log(`[combat] Cardboard Box absorbed hit on ${targetType}! Shield broken.`);
+        if (!attackerIsBuilding) (attacker as Unit).hasAttackedThisTurn = true;
+        events.push({
+          type: "damage_applied",
+          attackerType,
+          attackerOwner,
+          targetId: target.id,
+          targetType,
+          targetOwner,
+          targetPosition: (target as any).position,
+          amount: 0,
+          remainingHp: target.hp,
+        });
+        continue;
+      }
     }
 
     // deal damage immediately
@@ -189,13 +216,10 @@ export function processDamageAndDeath(state: GameState): {
     if (targetQuirks.some(q => q.id === "mirror") && dmg > 0) {
       const reflected = Math.floor(dmg * 0.5);
       attacker.hp -= reflected;
-      console.log(`[combat] Mirror! Reflected ${reflected} damage back to ${attackerOwner}`);
+      console.log(`[combat] Mirror! Reflected ${reflected} damage back to ${getPlayerName(attackerOwner)}`);
     }
 
     if (!attackerIsBuilding) (attacker as Unit).hasAttackedThisTurn = true;
-
-    const attackerType = attackerIsBuilding ? (attacker as Building).type : (attacker as Unit).type;
-    const targetType = targetIsBuilding ? (target as Building).type : (target as Unit).type;
 
     console.log(`[combat spd:${intent.speed}] ${attackerOwner}'s ${attackerType} → ${targetOwner}'s ${targetType} for ${dmg} (${target.hp} hp left)`);
 
@@ -211,6 +235,7 @@ export function processDamageAndDeath(state: GameState): {
       remainingHp: Math.max(0, target.hp),
     });
   }
+
 
   // --- phase 4: remove the dead ---
   for (const [id, u] of Object.entries(state.units)) {
@@ -233,7 +258,7 @@ export function processDamageAndDeath(state: GameState): {
         ownerId: u.owner,
         killedBy: killerIntent?.attacker.owner ?? "?",
       });
-      console.log(`[combat] ${u.type} (${u.owner}) KO'd`);
+      console.log(`[combat] ${u.type} (${getPlayerName(u.owner)}) KO'd`);
       delete state.units[id];
     }
   }
@@ -247,7 +272,7 @@ export function processDamageAndDeath(state: GameState): {
         ownerId: b.owner,
         destroyedBy: killerIntent?.attacker.owner ?? "?",
       });
-      console.log(`[combat] building ${b.type} (${b.owner}) destroyed`);
+      console.log(`[combat] building ${b.type} (${getPlayerName(b.owner)}) destroyed`);
       delete state.buildings[id];
     }
   }
@@ -257,7 +282,7 @@ export function processDamageAndDeath(state: GameState): {
   const activeBuildings = Object.values(state.buildings);
   for (const playerId of state.activePlayers) {
     if (!activeBuildings.some(b => b.owner === playerId && b.type === "cat_tree")) {
-      console.log(`[combat] ${playerId} lost their cat_tree — eliminated`);
+      console.log(`[combat] ${getPlayerName(playerId)} lost their cat_tree — eliminated`);
       eliminatedPlayers.push(playerId);
       events.push({ type: "player_eliminated", playerId });
     }

@@ -9,7 +9,7 @@ import { resolveActiveQuirk } from "../simulation/quirkSystem";
 
 export class Match {
   public id: string;
-  public players: PlayerId[];
+  public players: { id: PlayerId, name: string }[];
   private engine: SimulationEngine;
 
   // who's up right now
@@ -18,20 +18,27 @@ export class Match {
   // queue of what the active player submitted before hitting end turn
   private pendingCommands: ClientCommand[] = [];
 
-  public onEventsGenerated?: (events: any[]) => void;
-  public isPlayerConnected?: (playerId: string) => boolean;
+  private eventCallback?: (events: any[]) => void;
 
-  constructor(id: string, players: PlayerId[], seed: number) {
+  setEventCallback(cb: (events: any[]) => void) {
+    this.eventCallback = cb;
+  }
+
+  private emit(events: any[]) {
+    this.eventCallback?.(events);
+  }
+
+  constructor(id: string, players: { id: PlayerId, name: string }[], seed: number) {
     this.id = id;
     this.players = players;
 
     const { tiles, startPositions } = generateSymmetricMap(players.length, seed);
-    const firstPlayer = players[0];
+    const firstPlayerId = players[0].id;
 
     const state: GameState = {
       turn: 1,
-      activePlayers: [...players],
-      currentTurnPlayer: firstPlayer,
+      activePlayers: players.map(p => p.id),
+      currentTurnPlayer: firstPlayerId,
       map: tiles,
       units: {},
       buildings: {},
@@ -43,7 +50,7 @@ export class Match {
     // give everyone a cat tower and a starting hand
     players.forEach((p, index) => {
       const startPos = startPositions[index];
-      const tower = createBuilding("cat_tree", p, startPos);
+      const tower = createBuilding("cat_tree", p.id, startPos);
       // Add modifiers to the created building
       tower.modifiers = [];
       state.buildings[tower.id] = tower;
@@ -69,11 +76,12 @@ export class Match {
       const hand = deck.splice(0, 5);
 
       // p1 starts with 1 catnip since they go first; p2 gets theirs at turn start
-      state.players[p] = {
-        id: p,
+      state.players[p.id] = {
+        id: p.id,
+        name: p.name,
         hp: 20,
         maxHp: 20,
-        catnip: p === firstPlayer ? 1 : 0,
+        catnip: p.id === firstPlayerId ? 1 : 0,
         maxCatnip: 1,
         hand,
         deck,
@@ -90,7 +98,7 @@ export class Match {
     // Player 1 never goes through startNextTurn before their first move, so they
     // miss the card draw that every subsequent player gets at turn start. Draw
     // one card for them here to keep hand sizes equal.
-    const p1State = state.players[firstPlayer];
+    const p1State = state.players[firstPlayerId];
     if (p1State && p1State.deck.length > 0) {
       const drawn = p1State.deck.shift();
       if (drawn) p1State.hand.push(drawn);
@@ -104,14 +112,16 @@ export class Match {
     const state = this.engine.getState();
 
     // ignore commands from eliminated players
+    const playerName = this.players.find(p => p.id === playerId)?.name ?? playerId;
     if (!state.activePlayers.includes(playerId)) {
-      console.log(`[Match] blocking command from eliminated player ${playerId}`);
+      console.log(`[Match] blocking command from eliminated player ${playerName}`);
       return;
     }
 
     // ignore anyone who isn't up
     if (playerId !== state.currentTurnPlayer) {
-      console.log(`[Match] blocking command from ${playerId}, it's ${state.currentTurnPlayer}'s turn`);
+      const activeName = this.players.find(p => p.id === state.currentTurnPlayer)?.name ?? state.currentTurnPlayer;
+      console.log(`[Match] blocking command from ${playerName}, it's ${activeName}'s turn`);
       return;
     }
 
@@ -123,9 +133,9 @@ export class Match {
     if (command.type === "play_card") {
       const state = this.engine.getState();
       const events = resolveInstantCardPlay(state, { playerId, cmd: command });
-      if (events.length > 0 && this.onEventsGenerated) {
+      if (events.length > 0) {
         events.push({ type: "state_update", state: this.getState() });
-        this.onEventsGenerated(events);
+        this.emit(events);
       }
       return;
     }
@@ -133,9 +143,9 @@ export class Match {
     if (command.type === "move_unit") {
       const state = this.engine.getState();
       const events = this.engine.tickMovement(playerId, [command]);
-      if (events.length > 0 && this.onEventsGenerated) {
+      if (events.length > 0) {
         events.push({ type: "state_update", state: this.getState() });
-        this.onEventsGenerated(events);
+        this.emit(events);
       }
       return;
     }
@@ -143,9 +153,9 @@ export class Match {
     if (command.type === "activate_quirk") {
       const state = this.engine.getState();
       const events = resolveActiveQuirk(state, { playerId, cmd: command });
-      if (events.length > 0 && this.onEventsGenerated) {
+      if (events.length > 0) {
         events.push({ type: "state_update", state: this.getState() });
-        this.onEventsGenerated(events);
+        this.emit(events);
       }
       return;
     }
@@ -171,11 +181,8 @@ export class Match {
     const events = this.engine.tickTurn(actingPlayerId, movements, nextPlayerId);
 
     this.pendingCommands = [];
-    this.currentPlayerIndex = this.players.indexOf(nextPlayerId);
-
-    if (this.onEventsGenerated) {
-      this.onEventsGenerated(events);
-    }
+    this.currentPlayerIndex = this.players.findIndex(p => p.id === nextPlayerId);
+    this.emit(events);
   }
 
   getState(playerId?: string) {

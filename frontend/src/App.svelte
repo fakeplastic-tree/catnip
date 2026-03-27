@@ -1,37 +1,98 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import MapView from './ui/mapView.svelte';
   import CardHand from './ui/cardHand.svelte';
   import UnitInfo from './ui/UnitInfo.svelte';
   import DeckBuilder from './ui/deckBuilder.svelte';
-  
-  import { connectGameServer, gameStateStore, playerIdStore, activeMatchIdStore } from './game/gameClient';
+
+  import {
+    gameStateStore,
+    playerIdStore,
+    playerNameStore,
+    lobbyStatusStore,
+    queuePositionStore,
+    privateCodeStore,
+    lobbyErrorStore,
+    savePlayerName,
+    joinQueue,
+    leaveQueue,
+    createPrivateMatch,
+    joinPrivateMatch,
+  } from './game/gameClient';
 
   let view: 'menu' | 'deckbuilder' | 'game' = 'menu';
+  let privateCodeInput = '';
+  let showJoinPrivate = false;
+  let nameInput = $playerNameStore;
 
-  function joinGame(player: string) {
-    const urlParams = new URLSearchParams(window.location.search);
-    const requestedPlayer = urlParams.get('player') || player;
-    
-    $playerIdStore = requestedPlayer;
-    connectGameServer("match_test_123", requestedPlayer);
+  $: if ($lobbyStatusStore === 'in_match') {
     view = 'game';
   }
 
+  function handleNameChange() {
+    if (nameInput.trim()) savePlayerName(nameInput.trim());
+  }
 </script>
 
 <main class="app-container">
   {#if view === 'menu'}
     <div class="menu">
+      {#if $lobbyErrorStore}
+        <div class="error-banner">
+          <span>{$lobbyErrorStore}</span>
+          <button class="close-error" on:click={() => lobbyErrorStore.set(null)}>×</button>
+        </div>
+      {/if}
       <h1>🐾 Catnip Conquest 🐾</h1>
-      <button on:click={() => view = 'deckbuilder'}>Deck Builder</button>
-      <div style="display: flex; gap: 10px;">
-        <button on:click={() => joinGame('player1')}>Join as Player 1</button>
-        <button on:click={() => joinGame('player2')}>Join as Player 2</button>
+
+      <!-- Player name -->
+      <div class="name-row">
+        <input
+          class="name-input"
+          bind:value={nameInput}
+          on:blur={handleNameChange}
+          on:keydown={e => e.key === 'Enter' && handleNameChange()}
+          placeholder="Your name"
+          maxlength="20"
+        />
       </div>
+
+      {#if $lobbyStatusStore === 'idle'}
+        <div class="button-group">
+          <button class="btn-primary" on:click={joinQueue}>⚔️ Quick Match</button>
+          <button class="btn-secondary" on:click={() => view = 'deckbuilder'}>📖 Deck Builder</button>
+        </div>
+
+        <div class="private-section">
+          {#if !showJoinPrivate}
+            <button class="btn-ghost" on:click={createPrivateMatch}>🔒 Create Private Match</button>
+            <button class="btn-ghost" on:click={() => showJoinPrivate = true}>🔑 Join Private Match</button>
+          {:else}
+            <div class="code-row">
+              <input class="code-input" bind:value={privateCodeInput} placeholder="Enter code" maxlength="4" />
+              <button class="btn-primary" on:click={() => joinPrivateMatch(privateCodeInput.toUpperCase())}>Join</button>
+              <button class="btn-ghost" on:click={() => showJoinPrivate = false}>Cancel</button>
+            </div>
+          {/if}
+        </div>
+
+      {:else if $lobbyStatusStore === 'queued'}
+        <div class="status-badge searching">
+          <span class="spinner">⟳</span> Searching... (#{$queuePositionStore})
+        </div>
+        <button class="btn-ghost" on:click={leaveQueue}>Cancel</button>
+
+      {:else if $lobbyStatusStore === 'in_private'}
+        <div class="status-badge private">
+          Your code: <strong class="code-display">{$privateCodeStore}</strong>
+        </div>
+        <p class="hint">Share this with a friend to start.</p>
+        <button class="btn-ghost" on:click={() => lobbyStatusStore.set('idle')}>Cancel</button>
+      {/if}
     </div>
+
   {:else if view === 'deckbuilder'}
     <DeckBuilder on:back={() => view = 'menu'} />
+
   {:else if view === 'game'}
     {#if $gameStateStore}
       <div class="game-ui">
@@ -40,7 +101,7 @@
         <CardHand />
       </div>
     {:else}
-      <p>Connecting to server & waiting for state...</p>
+      <p class="connecting">Connecting to match...</p>
     {/if}
   {/if}
 </main>
@@ -53,7 +114,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: #fffafa; /* Very soft pink-white */
+    background: #fffafa;
     color: #444;
   }
 
@@ -63,7 +124,7 @@
     align-items: center;
     justify-content: center;
     flex: 1;
-    gap: 1.5rem;
+    gap: 1.2rem;
     background: linear-gradient(135deg, #ffcada 0%, #fffafa 100%);
   }
 
@@ -71,36 +132,230 @@
     font-size: 3.5rem;
     color: #ff6090;
     text-shadow: 2px 2px 0px white, 4px 4px 15px rgba(255, 96, 144, 0.3);
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Name row */
+  .name-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .name-input {
+    padding: 8px 16px;
+    font-size: 1rem;
+    border: 2px solid #ffa0c0;
+    border-radius: 50px;
+    outline: none;
+    background: rgba(255,255,255,0.8);
+    color: #444;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+
+  .name-input:focus {
+    border-color: #ff6090;
+  }
+
+  /* Buttons */
+  .button-group {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   button {
-    padding: 12px 32px;
-    font-size: 1.25rem;
-    font-weight: bold;
+    font-family: inherit;
     cursor: pointer;
-    background: #ff6090;
-    color: white;
     border: none;
-    border-radius: 50px; /* Super rounded / pill shaped */
-    box-shadow: 0 4px 12px rgba(255, 96, 144, 0.4);
-    transition: transform 0.2s, box-shadow 0.2s;
+    border-radius: 50px;
+    font-weight: bold;
+    transition: transform 0.15s, box-shadow 0.15s;
   }
 
   button:hover {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 6px 20px rgba(255, 96, 144, 0.5);
-    background: #ff7aa6;
+    transform: translateY(-2px) scale(1.04);
   }
 
   button:active {
-    transform: translateY(0) scale(0.98);
+    transform: translateY(0) scale(0.97);
   }
 
+  .btn-primary {
+    padding: 12px 32px;
+    font-size: 1.2rem;
+    background: #ff6090;
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 96, 144, 0.4);
+  }
+
+  .btn-primary:hover {
+    background: #ff7aa6;
+    box-shadow: 0 6px 20px rgba(255, 96, 144, 0.5);
+  }
+
+  .btn-secondary {
+    padding: 12px 28px;
+    font-size: 1.1rem;
+    background: #ffe0ec;
+    color: #cc4477;
+    box-shadow: 0 2px 8px rgba(255, 96, 144, 0.2);
+  }
+
+  .btn-secondary:hover {
+    background: #ffd0e0;
+  }
+
+  .btn-ghost {
+    padding: 8px 20px;
+    font-size: 0.95rem;
+    background: transparent;
+    color: #cc4477;
+    border: 2px solid #ffa0c0;
+  }
+
+  .btn-ghost:hover {
+    background: rgba(255,192,215,0.3);
+  }
+
+  /* Private section */
+  .private-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .code-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .code-input {
+    padding: 8px 16px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    border: 2px solid #ffa0c0;
+    border-radius: 50px;
+    outline: none;
+    background: rgba(255,255,255,0.8);
+    color: #444;
+    width: 100px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+
+  .code-input:focus {
+    border-color: #ff6090;
+  }
+
+  /* Status badges */
+  .status-badge {
+    padding: 12px 28px;
+    border-radius: 50px;
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+
+  .status-badge.searching {
+    background: #fff0b0;
+    color: #886600;
+    border: 2px solid #ffdd44;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .status-badge.private {
+    background: #e8f0ff;
+    color: #3355cc;
+    border: 2px solid #99aaff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .code-display {
+    font-size: 1.5rem;
+    letter-spacing: 0.2em;
+    font-family: monospace;
+  }
+
+  .hint {
+    font-size: 0.85rem;
+    color: #888;
+    margin: 0;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .spinner {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+    font-size: 1.3rem;
+  }
+
+  /* Game view */
   .game-ui {
     position: relative;
     width: 100%;
     height: 100%;
     background: #eef2f3;
+  }
+
+  .connecting {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-size: 1.2rem;
+    color: #888;
+  }
+
+  /* Error Banner */
+  .error-banner {
+    position: absolute;
+    top: 2rem;
+    width: 90%;
+    max-width: 500px;
+    background: #ff5555;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(255, 0, 0, 0.2);
+    z-index: 100;
+    font-weight: bold;
+    animation: slideDown 0.3s ease-out;
+  }
+
+  .close-error {
+    background: rgba(255,255,255,0.2) !important;
+    border: none !important;
+    color: white !important;
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+    font-size: 1.2rem !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
+  }
+
+  .close-error:hover {
+    background: rgba(255,255,255,0.4) !important;
+    transform: none !important;
+  }
+
+  @keyframes slideDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
   }
 </style>

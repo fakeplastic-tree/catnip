@@ -235,7 +235,7 @@
   $: turnLabel = $gameStateStore
     ? $isMyTurnStore
       ? "Your Turn"
-      : `${$gameStateStore.currentTurnPlayer}'s Turn`
+      : `${$gameStateStore.players[$gameStateStore.currentTurnPlayer]?.name ?? $gameStateStore.currentTurnPlayer}'s Turn`
     : "";
 
   let logEl: HTMLElement;
@@ -360,7 +360,7 @@
         class:current-player={player.id === $playerIdStore}
         class:active-turn={player.id === $gameStateStore.currentTurnPlayer}
       >
-        <div class="player-name">{player.id}</div>
+        <div class="player-name">{player.name}</div>
         <div class="stat">Catnip: {player.catnip}</div>
         <div class="stat">Cards: {player.hand.length}</div>
         {#if player.id === $gameStateStore.currentTurnPlayer}
@@ -388,7 +388,7 @@
   <div class="log-title">Combat Log</div>
   {#if $combatLogStore.length === 0}
     <div class="log-empty">
-      Turn 1 — {$gameStateStore?.currentTurnPlayer ?? ""} goes first.
+      Turn 1 — {$gameStateStore?.players[$gameStateStore.currentTurnPlayer]?.name ?? ""} goes first.
     </div>
   {/if}
   {#each $combatLogStore as entry}
@@ -423,7 +423,7 @@
       <h1 class="victory-text">MATCH CONCLUDED</h1>
       <p class="winner-text">
         {#if $gameStateStore.activePlayers.length === 1}
-          {$gameStateStore.activePlayers[0]} is the victor! 👑
+          {$gameStateStore.players[$gameStateStore.activePlayers[0]]?.name ?? $gameStateStore.activePlayers[0]} is the victor! 👑
         {:else}
           It's a draw!
         {/if}

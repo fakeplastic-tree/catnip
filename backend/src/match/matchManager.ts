@@ -1,30 +1,32 @@
-import { WebSocket } from 'ws';
-import { Match } from './match';
-import { ClientCommand, PlayerId } from '@hex-strategy/shared';
+import { Match } from "./match";
+import { MatchSession } from "./matchSession";
+import { ClientCommand, PlayerId } from "@hex-strategy/shared";
+
+function generateId() {
+  return `match_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+}
 
 export class MatchManager {
-  private matches: Map<string, Match> = new Map();
+  private sessions: Map<string, MatchSession> = new Map();
 
-  createMatch(players: PlayerId[], seed: number) {
-    const matchId = `match_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-    const match = new Match(matchId, players, seed);
-    this.matches.set(matchId, match);
-    return match;
+  createMatch(players: { id: PlayerId, name: string }[], seed: number) {
+    const match = new Match(generateId(), players, seed);
+    const session = new MatchSession(match);
+    this.sessions.set(match.id, session);
+    return session;
   }
 
-  getMatch(id: string) {
-    return this.matches.get(id);
+  getSession(matchId: string) {
+    return this.sessions.get(matchId);
   }
 
   handlePlayerAction(matchId: string, playerId: PlayerId, command: ClientCommand) {
-    console.log(`[MatchManager] Routing action ${command.type} to ${matchId} for ${playerId}`);
-    const match = this.matches.get(matchId);
-    if (!match) {
-        console.warn(`[MatchManager] Match ${matchId} not found!`);
-        return;
+    const session = this.sessions.get(matchId);
+    if (!session) {
+      console.warn(`[MatchManager] No session for ${matchId}`);
+      return;
     }
-
-    match.queueCommand(playerId, command);
+    session.handleCommand(playerId, command);
   }
 }
 

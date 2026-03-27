@@ -18,6 +18,7 @@ export function resolveInstantCardPlay(
       console.log(`[PhaseSystem] Invalid player: ${play.playerId}`);
       return events;
     }
+    const playerName = player.name;
 
     const cardIndex = player.hand.findIndex(c => c.id === play.cmd.cardId);
     if (cardIndex === -1) {
@@ -121,7 +122,7 @@ export function resolveInstantCardPlay(
     player.catnip -= card.cost;
     player.hand.splice(cardIndex, 1);
 
-    console.log(`[PhaseSystem] ${play.playerId} pays ${card.cost} to cast ${card.name} at:`, play.cmd.target);
+    console.log(`[PhaseSystem] ${playerName} pays ${card.cost} to cast ${card.name} at:`, play.cmd.target);
 
     // Emit log event for combat log
     events.push({
@@ -188,7 +189,7 @@ export function resolveInstantCardPlay(
 
           delete state.units[oldUnit.id];
           state.units[newUnit.id] = newUnit;
-          console.log(`[PhaseSystem] ${play.playerId} molted ${baseType} → ${effect.params.unitType}`);
+          console.log(`[PhaseSystem] ${playerName} molted ${baseType} → ${effect.params.unitType}`);
           events.push({
             type: "unit_molted",
             playerId: play.playerId,
@@ -219,7 +220,7 @@ export function resolveInstantCardPlay(
           }
           const unit = createUnit(effect.params.unitType, play.playerId, play.cmd.target);
           state.units[unit.id] = unit;
-          console.log(`[PhaseSystem] ${play.playerId} spawned ${effect.params.unitType} directly (paired with Instinct)`);
+          console.log(`[PhaseSystem] ${playerName} spawned ${effect.params.unitType} directly (paired with Instinct)`);
         }
       }
       else if (effect.type === "spawn_building" && play.cmd.target && typeof play.cmd.target === "object" && 'q' in play.cmd.target) {
@@ -248,12 +249,13 @@ export function resolveInstantCardPlay(
       else if (effect.type === "shield" && play.cmd.target && typeof play.cmd.target === "string") {
         const u = state.units[play.cmd.target as string];
         if (u) {
-          // Implementing shield as temporary HP + visual modifier
-          u.hp += effect.params.amount;
-          u.modifiers.push({ source: "cardboard_box", stat: "speed", amount: 0, duration: "permanent" }); // Placeholder speed nerf/box indicator
-          console.log(`[PhaseSystem] Applied shield to ${u.type}. New HP: ${u.hp}`);
+          // One-hit absorb: the modifier acts as the shield. Combat strips it on the first hit.
+          // If the unit goes untouched this turn it expires naturally at end_of_turn cleanup.
+          u.modifiers.push({ source: "cardboard_box", stat: "speed", amount: 0, duration: "end_of_turn" });
+          console.log(`[PhaseSystem] Cardboard Box applied to ${u.type} — absorbs 1 hit or expires this turn`);
         }
       }
+
       else if (effect.type === "lure_unit" && play.cmd.target && typeof play.cmd.target === "object" && 'q' in play.cmd.target) {
         // Find nearest enemy unit within radius and move it to target tile
         const center = play.cmd.target as any;
@@ -326,7 +328,7 @@ export function resolveInstantCardPlay(
 
         if (u && u.owner === play.playerId) {
           const line = effect.params.line;
-          console.log(`[PhaseSystem] ${play.playerId} attempting ${line} Spirit evolution on ${u.type}`);
+          console.log(`[PhaseSystem] ${playerName} attempting ${line} Spirit evolution on ${u.type}`);
 
           const houseStages = ["tabby", "siamese", "sphynx", "maine_coon", "calico"];
           const strayStages = ["tom", "alley_cat", "lion", "panther"];
@@ -353,7 +355,7 @@ export function resolveInstantCardPlay(
               // Note: Spirit molts do NOT remove spawn sickness (unlike Fresh Spark) 
               delete state.units[u.id];
               state.units[newUnit.id] = newUnit;
-              console.log(`[PhaseSystem] ${line} Spirit pulled RANDOM ${evoEffect.params.unitType} from deck for ${u.type}`);
+              console.log(`[PhaseSystem] ${line} Spirit pulled RANDOM ${evoEffect.params.unitType} from deck for ${u.type} (owner: ${playerName})`);
               events.push({ type: "unit_molted", playerId: play.playerId, fromType: u.type, toType: evoEffect.params.unitType, position: u.position });
             }
           } else {

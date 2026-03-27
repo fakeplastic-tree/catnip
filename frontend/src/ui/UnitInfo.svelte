@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { gameStateStore, selectedUnitIdStore, selectedCardIdStore, projectedHandStore, isMyTurnStore, playerCatnipStore, sendCommand } from "../game/gameClient";
+  import { gameStateStore, selectedUnitIdStore, selectedCardIdStore, projectedHandStore, isMyTurnStore, playerCatnipStore, playerIdStore, sendCommand } from "../game/gameClient";
   import { UNIT_DICTIONARY, BUILDING_DICTIONARY, TRAP_DICTIONARY } from "@hex-strategy/shared";
   import { derived } from "svelte/store";
   import { tweened } from "svelte/motion";
@@ -212,8 +212,8 @@
   <div class="unit-info">
     <div class="header">
       <h3>{$selectedUnit.name}</h3>
-      <div class="owner" class:mine={$selectedUnit.owner === 'player1'}>
-        {$selectedUnit.isCardPreview ? 'Preview' : ($selectedUnit.owner === 'player1' ? 'Friendly' : 'Enemy')}
+      <div class="owner" class:mine={$selectedUnit.owner === $playerIdStore}>
+        {$selectedUnit.isCardPreview ? 'Preview' : ($gameStateStore?.players[$selectedUnit.owner]?.name ?? 'Unknown')}
       </div>
     </div>
 

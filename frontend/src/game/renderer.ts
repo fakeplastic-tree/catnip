@@ -7,6 +7,14 @@ const HEX_DIRS = [
   { q: -1, r: 1 }, { q: -1, r: 0 }, { q: 0, r: -1 },
 ];
 
+// Sum a unit's base movement plus any active movement modifiers
+function effectiveMovement(unit: Unit): number {
+  const bonus = unit.modifiers?.reduce(
+    (sum, m) => m.stat === "movement" ? sum + m.amount : sum, 0
+  ) ?? 0;
+  return unit.movement + bonus;
+}
+
 export class GameRenderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -68,8 +76,9 @@ export class GameRenderer {
     }
 
     const reachable = new Set<string>();
+    const range = effectiveMovement(unit);
     const queue: { q: number, r: number, stepsLeft: number }[] = [
-      { q: unit.position.q, r: unit.position.r, stepsLeft: unit.movement }
+      { q: unit.position.q, r: unit.position.r, stepsLeft: range }
     ];
     const visited = new Set<string>();
     visited.add(`${unit.position.q},${unit.position.r}`);

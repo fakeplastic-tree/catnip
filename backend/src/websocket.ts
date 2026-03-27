@@ -1,78 +1,79 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { Server } from "http";
 import { parseClientCommand } from "./networking/commandParser";
-import { matchManager } from "./match/matchManager";
+import { MatchManager } from "./match/matchManager";
+import { LobbyManager } from "./match/lobbyManager";
 
 interface ExtWebSocket extends WebSocket {
   playerId?: string;
+  playerName?: string;
   matchId?: string;
 }
 
-export function setupWebSocketServer(server: Server) {
+export function setupWebSocketServer(server: Server, matchManager: MatchManager, lobbyManager: LobbyManager) {
   const wss = new WebSocketServer({ server });
 
   wss.on("connection", (ws: ExtWebSocket) => {
-    console.log("Client connected");
-
-    ws.on("message", (message: string) => {
-      // 1. Check for initialization payload first
+    ws.on("message", (raw: string) => {
+      let data: any;
       try {
-        const raw = JSON.parse(message.toString());
-        if (!ws.playerId || !ws.matchId) {
-          if (raw.type === "init") {
-            ws.playerId = raw.playerId;
-            ws.matchId = raw.matchId;
-
-            const matchIdStr: string = ws.matchId || "";
-            const match = matchManager.getMatch(matchIdStr);
-            if (match) {
-              // Ensure the match knows how to broadcast if it doesn't already
-              if (!match.onEventsGenerated) {
-                match.onEventsGenerated = (events) => {
-                  wss.clients.forEach((c: any) => {
-                    if (c.matchId === match.id && c.readyState === WebSocket.OPEN) {
-                      c.send(JSON.stringify({ type: "events", events }));
-                    }
-                  });
-                };
-              }
-              
-              if (!match.isPlayerConnected) {
-                match.isPlayerConnected = (pid: string) => {
-                  let found = false;
-                  wss.clients.forEach((c: any) => {
-                    if (c.matchId === match.id && c.playerId === pid && c.readyState === WebSocket.OPEN) {
-                       found = true;
-                    }
-                  });
-                  return found;
-                };
-              }
-
-              ws.send(JSON.stringify({ type: "state_update", state: match.getState(ws.playerId) }));
-            }
-          }
-          return;
-        }
-      } catch (e) {
-        // Fall back to actual valid commands if parsed normally
-      }
-
-      // 2. Must be regular command, validate it
-      const parsed = parseClientCommand(message.toString());
-      if (!parsed || !ws.playerId || !ws.matchId) {
-        console.log("Invalid/Ignored payload or missing auth:", message.toString());
+        data = JSON.parse(raw.toString());
+      } catch {
         return;
       }
 
-      console.log(`[WS] Received valid action from ${ws.playerId}:`, parsed.type);
+      // Client stamps itself with a persistent ID before doing anything else
+      if (data.type === "identify") {
+        ws.playerId = data.playerId;
+        ws.playerName = data.name;
+        return;
+      }
 
-      // Valid game command from registered socket
-      matchManager.handlePlayerAction(ws.matchId, ws.playerId, parsed);
+      // Lobby commands — handled before a match exists
+      if (data.type === "join_queue") {
+        lobbyManager.joinQueue(ws);
+        return;
+      }
+      if (data.type === "leave_queue") {
+        lobbyManager.leaveQueue(ws);
+        return;
+      }
+      if (data.type === "create_private") {
+        lobbyManager.createPrivate(ws);
+        return;
+      }
+      if (data.type === "join_private") {
+        lobbyManager.joinPrivate(ws, data.code);
+        return;
+      }
+
+      // Init — client acks a match_found and registers with the session
+      if (data.type === "init") {
+        ws.playerId = data.playerId;
+        ws.matchId = data.matchId;
+
+        const session = matchManager.getSession(ws.matchId!);
+        if (session) {
+          session.addClient(ws.playerId!, ws);
+          ws.send(JSON.stringify({ type: "state_update", state: session.getState(ws.playerId!) }));
+        }
+        return;
+      }
+
+      // Game command — must already be in a match
+      if (!ws.playerId || !ws.matchId) return;
+
+      const command = parseClientCommand(data);
+      if (!command) return;
+
+      matchManager.handlePlayerAction(ws.matchId, ws.playerId, command);
     });
 
     ws.on("close", () => {
-      console.log(`Client disconnected: ${ws.playerId}`);
+      lobbyManager.cleanup(ws);
+      if (ws.matchId && ws.playerId) {
+        matchManager.getSession(ws.matchId)?.removeClient(ws.playerId);
+      }
     });
   });
 }

@@ -26,7 +26,8 @@ export function processMovement(state: GameState, movements: MoveUnitCommand[]):
     if (cmd.path.length <= 1) continue;
 
     const steps = cmd.path.length - 1;
-    if (steps > unit.movement) continue; // too far, server rejects it
+    const movBonus = unit.modifiers?.reduce((sum, m) => m.stat === "movement" ? sum + m.amount : sum, 0) ?? 0;
+    if (steps > unit.movement + movBonus) continue; // too far, server rejects it
 
     let validEndPos = cmd.path[0];
 

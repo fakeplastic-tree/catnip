@@ -67,6 +67,7 @@ export interface Trap {
 
 export interface PlayerState {
   id: PlayerId;
+  name: string;
   hp: number;
   maxHp: number;
   catnip: number;
