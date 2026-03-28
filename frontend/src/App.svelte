@@ -17,9 +17,10 @@
     lobbyErrorStore,
     savePlayerName,
     joinQueue,
-    leaveQueue,
     createPrivateMatch,
     joinPrivateMatch,
+    leaveQueue,
+    leaveLobby,
     selectedCardIdStore
   } from './game/gameClient';
 
@@ -163,7 +164,7 @@
           <button class="copy-link-btn" on:click={copyInviteLink} title="Copy Invite Link">🔗</button>
         </div>
         <p class="hint">Invite a friend with this code or link!</p>
-        <button class="btn-ghost" on:click={() => lobbyStatusStore.set('idle')}>Exit Lobby</button>
+        <button class="btn-ghost" on:click={leaveLobby}>Exit Lobby</button>
       {/if}
     </div>
 

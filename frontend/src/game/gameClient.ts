@@ -134,6 +134,9 @@ function handleServerMessage(payload: any) {
     case "private_created":
       lobbyStatusStore.set("in_private");
       privateCodeStore.set(payload.code);
+      // Update URL so a refresh keeps us in this lobby
+      const lobbyUrl = `${window.location.origin}${window.location.pathname}?match=${payload.code}`;
+      window.history.replaceState({ path: lobbyUrl }, '', lobbyUrl);
       break;
 
     case "match_found":
@@ -141,6 +144,11 @@ function handleServerMessage(payload: any) {
       activeMatchIdStore.set(payload.matchId);
       privateCodeStore.set(payload.matchCode);
       isSpectatorStore.set(!!payload.isSpectator);
+
+      // Update URL so a refresh keeps us in this match
+      const matchUrl = `${window.location.origin}${window.location.pathname}?match=${payload.matchCode}`;
+      window.history.replaceState({ path: matchUrl }, '', matchUrl);
+
       // The server already added us to the session when startMatch ran —
       // but we still send init so it can register our WS against our player slot.
       socket?.send(JSON.stringify({ 
@@ -167,6 +175,11 @@ function handleServerMessage(payload: any) {
 
 import { getSelectedDeck } from "./deckStore";
 
+export function clearMatchUrl() {
+  const url = `${window.location.origin}${window.location.pathname}`;
+  window.history.replaceState({ path: url }, '', url);
+}
+
 export function joinQueue() {
   lobbyErrorStore.set(null);
   connectLobby();
@@ -176,6 +189,12 @@ export function joinQueue() {
 export function leaveQueue() {
   socket?.send(JSON.stringify({ type: "leave_queue" }));
   lobbyStatusStore.set("idle");
+  clearMatchUrl();
+}
+
+export function leaveLobby() {
+  lobbyStatusStore.set("idle");
+  clearMatchUrl();
 }
 
 export function createPrivateMatch() {
