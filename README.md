@@ -1,64 +1,83 @@
-# 🐾 Catnip Conquest(placeholder name)
+# 🐾 Catnip Conquest
 
-A lightweight, hex-based strategy game built with TypeScript(and Svelte). Commmand your cats, play your cards right, and protect your Cat Tower at all costs. 
+**Catnip Conquest** is a low-latency, hex-based multiplayer strategy game built with a "code-first" philosophy. Command an army of tactical felines, manage your Catnip resources, and defend your Cat Tree against rival clowders.
 
-Designed to be lightweight so it could be hosted on a slightly advanced toaster, or more specifically, an old Dell office laptop I found laying around. (I get the irony of using typescript for a project that aims to run on a potato, but it lets me share types between the client and server, and I'm lazy. I almost did commit to a rust rewrite but I had to stop myself)
+Designed with a focus on **deterministic simulation** and **cross-platform type safety**, the game provides a snappy, responsive experience even on low-spec hardware.
 
-## 🌟 Features
+---
 
-- **Real-time Multiplayer**: Powered by WebSockets with a custom `LobbyManager` for fast pairing.
-- **Matchmaking**: 
-  - **Quick Match**: FCFS (First-Come, First-Served) queue to get you into the action instantly.
-  - **Private Match**: Generate a 4-character code and invite a friend.
-- **Persistent Identity**: No accounts needed yet. Your UUID and chosen name stay with you via `localStorage`.
-- **Hex Strategy**: BFS-based movement range calculation, symmetric map generation, and tactical positioning.
-- **Card-Driven Mechanics**: Spend Catnip to spawn units, evolve your kittens (Stage 1 -> 2 -> 3), or buff your troops with Cardboard Boxes.
-- **Dynamic Combat**: initiative-based speed system, damage popups, and a detailed combat log.
+## 🚀 Technical Highlights
 
-## 🏗️ How it Works
+### ⚡ Deterministic Simulation Engine
+The core game logic lives in a standalone simulation layer shared (via TypeScript) between the client and server. 
+- **Predictive Client-Side Logic**: The frontend uses the same simulation code to provide instant visual feedback (ghost units, pathing previews) before the server confirms the turn.
+- **Phase-Based Resolution**: Combat is resolved in a structured "Combat Phase" where initiative (Speed) and positioning determine the outcome, ensuring every match is fair and predictable.
 
-The architecture is split into three main layers to keep things decoupled:
+### 🏗️ Advanced Architecture
+- **Unified Logic Hub**: All unit stats, card effects, and game rules reside in a `shared/` directory, imported by both the Svelte frontend and Node.js backend to prevent "brain-split" bugs.
+- **Tactical Hex Engine**: 
+  - Efficient **BFS (Breadth-First Search)** for movement and range calculations.
+  - **Symmetric Map Generation** ensures competitive balance.
+  - **Spatial Querying**: Optimized targeting for multi-strike and area-of-effect abilities.
 
-1. **Lobby Layer**: Handles incoming WebSocket connections, `identify` messages, and the matchmaking queue.
-2. **Match Layer (`MatchSession`)**: Manages the bridge between raw WebSockets and a specific game instance. It handles message broadcasting and client presence.
-3. **Simulation Engine**: The core "brain" of the game. It processes moves, card plays, and combat ticks in a (as close to as possible)deterministic way.
+### 🐈 Latest Feature: Cat Tree Attachment System
+The Cat Tree is no longer a static landmark. It now supports a dynamic **Mod/Attachment System**:
+- **Multi-Target Logic**: Refactored combat targeting allows the Cat Tree to track and strike multiple unique targets per turn.
+- **Dynamic Equipment**: Attachments like **Cannons**, **Catapults**, and **Cat Wizards** grant additional attacks, range extensions, or instant utility (Healing/Zapping).
+- **Structural Layering**: Integrated damage-absorption logic where shields take the hit before the tower's base HP is affected.
 
-## 🚀 Getting Started
+---
 
-### Prerequisites
-- Node.js (Latest LTS)
-- npm
+## 🌟 Key Features
 
-### Installation
+- **Real-time Multiplayer**: Low-overhead WebSockets for instant turn-sync.
+- **Matchmaking Layer**:
+  - **Quick Match**: Global FCFS queue for immediate play.
+  - **Private Rooms**: 4-character shortcodes for playing with friends.
+- **Evolution Mechanics**: Deep strategy involving unit "Molting" (Stage 1 -> 2 -> 3) and resource management.
+- **Visual Feedback**: Real-time damage popups, combat logs, and animated state transitions.
 
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/fakeplastic-tree/catnip.git
-   cd catnip
-   ```
-
-2. Install dependencies (root, frontend, and backend):
-   ```bash
-   npm install
-   cd backend && npm install
-   cd ../frontend && npm install
-   ```
-
-### Running Locally
-
-To start both the backend and frontend in development mode:
-```bash
-# From the root directory
-npm start
-```
-
-- **Frontend**: http://localhost:5173
-- **Backend**: http://localhost:3000
+---
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Svelte + Vite (Canvas-based rendering)
-- **Backend**: Node.js + TypeScript + `ws`
-- **Shared**: Common types and constants for perfect sync between client and server.
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend** | Svelte + Vite (HTML5 Canvas Rendering) |
+| **Backend** | Node.js + TypeScript |
+| **Networking** | WebSockets (`ws`) |
+| **Logic** | Shared TypeScript Simulation Library |
+| **Styling** | Vanilla CSS (Modern Fluid Design) |
 
 ---
+
+## 🏗️ Getting Started
+
+### Prerequisites
+- **Node.js**: v18.0 or higher
+- **npm**: v9.0 or higher
+
+### Installation & Run
+
+1. **Clone & Install**:
+   ```bash
+   git clone https://github.com/fakeplastic-tree/catnip.git
+   cd catnip
+   npm install
+   ```
+
+2. **Launch Development Environment**:
+   Starting from the root directory will launch both the frontend and backend concurrently:
+   ```bash
+   npm run dev
+   ```
+
+- **Client**: `http://localhost:5173`
+- **Server**: `http://localhost:3000`
+
+---
+
+## 🗺️ Roadmap
+- [ ] Account-based progression and persistent cat collections.
+- [ ] Advanced "Fog of War" mechanics using hex-based visibility.
+- [ ] AI opponents for solo practice mode.
