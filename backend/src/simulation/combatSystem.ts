@@ -56,7 +56,7 @@ function getEffectiveStats(entity: Unit | Building, isBuilding: boolean) {
     if (q.trigger === "combat_calculation") {
       if (q.id === "desperation_strike") {
         if (entity.hp < maxHp / 3) {
-          finalAtk *= (q.value || 2); 
+          finalAtk *= (q.value || 2);
         }
       }
     }
@@ -174,18 +174,18 @@ export function processDamageAndDeath(state: GameState): {
         const allTargets = findTargets(b, allUnits, allBuildings, b.owner, 2, 999);
         for (const t of allTargets) {
           intents.push({
-             attacker: b,
-             attackerIsBuilding: true,
-             target: t.target,
-             targetIsBuilding: t.isBuilding,
-             speed: stats.speed,
-             overrideDamage: 100
+            attacker: b,
+            attackerIsBuilding: true,
+            target: t.target,
+            targetIsBuilding: t.isBuilding,
+            speed: stats.speed,
+            overrideDamage: 100
           });
         }
       } else {
         let attAtk = 0;
         let attRange = 0;
-        
+
         if (b.attachment.type === "cannon") {
           attAtk = 200;
           attRange = 2;
@@ -193,17 +193,17 @@ export function processDamageAndDeath(state: GameState): {
           attAtk = 150;
           attRange = 4;
         }
-        
+
         if (attAtk > 0) {
           const attTarget = findTargets(b, allUnits, allBuildings, b.owner, attRange, 1);
           if (attTarget.length > 0) {
             intents.push({
-               attacker: b,
-               attackerIsBuilding: true,
-               target: attTarget[0].target,
-               targetIsBuilding: attTarget[0].isBuilding,
-               speed: stats.speed,
-               overrideDamage: attAtk
+              attacker: b,
+              attackerIsBuilding: true,
+              target: attTarget[0].target,
+              targetIsBuilding: attTarget[0].isBuilding,
+              speed: stats.speed,
+              overrideDamage: attAtk
             });
           }
         }
@@ -274,31 +274,31 @@ export function processDamageAndDeath(state: GameState): {
     // deal damage immediately
     let tHp = target.hp;
     if (targetIsBuilding) {
-       let tB = target as Building;
-       if (tB.attachment && tB.attachment.hp > 0) {
-          if (tB.attachment.isShield) {
-             if (tB.attachment.hp >= dmg) {
-                tB.attachment.hp -= dmg;
-                dmg = 0;
-                console.log(`[combat] Attachment absorbed damage. Remaining attachment HP: ${tB.attachment.hp}`);
-             } else {
-                dmg -= tB.attachment.hp;
-                console.log(`[combat] Attachment absorbed ${tB.attachment.hp} damage and broke!`);
-                tB.attachment.hp = 0;
-                tB.attachment = undefined;
-             }
+      let tB = target as Building;
+      if (tB.attachment && tB.attachment.hp > 0) {
+        if (tB.attachment.isShield) {
+          if (tB.attachment.hp >= dmg) {
+            tB.attachment.hp -= dmg;
+            dmg = 0;
+            console.log(`[combat] ${tB.attachment.type} absorbed damage. Remaining attachment HP: ${tB.attachment.hp}`);
           } else {
-             // Not a shield: durability depletes as tower takes damage, but dmg still goes to tower
-             tB.attachment.hp -= dmg;
-             if (tB.attachment.hp <= 0) {
-                console.log(`[combat] Attachment durability depleted and it broke!`);
-                tB.attachment.hp = 0;
-                tB.attachment = undefined;
-             }
+            dmg -= tB.attachment.hp;
+            console.log(`[combat] ${tB.attachment.type} absorbed ${tB.attachment.hp} damage and broke!`);
+            tB.attachment.hp = 0;
+            tB.attachment = undefined;
           }
-       }
+        } else {
+          // Not a shield: durability depletes as tower takes damage, but dmg still goes to tower
+          tB.attachment.hp -= dmg;
+          if (tB.attachment.hp <= 0) {
+            console.log(`[combat] ${tB.attachment.type} durability depleted and it broke!`);
+            tB.attachment.hp = 0;
+            tB.attachment = undefined;
+          }
+        }
+      }
     }
-    
+
     target.hp -= dmg;
 
     // Mirror quirk (Siamese)

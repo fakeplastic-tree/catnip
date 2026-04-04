@@ -79,5 +79,5 @@ The Cat Tree is no longer a static landmark. It now supports a dynamic **Mod/Att
 
 ## 🗺️ Roadmap
 - [ ] Account-based progression and persistent cat collections.
-- [ ] Advanced "Fog of War" mechanics using hex-based visibility.
+- [ ] Ranked matchmaking and elo system. 
 - [ ] AI opponents for solo practice mode.

@@ -16,13 +16,6 @@
   $: catnip = $projectedCatnipStore;
 
   let isManuallyHidden = false;
-  let isMouseNear = false;
-
-  function handleGlobalMouseMove(e: MouseEvent) {
-    // Detect if mouse is in the bottom 25% of the viewport (non-blocking)
-    const threshold = window.innerHeight * 0.75;
-    isMouseNear = e.clientY > threshold;
-  }
 
   // --- Drag to Play ---
   let startX = 0;
@@ -40,13 +33,6 @@
     if (!$dragDropStore.isDragging) return;
     const touch = e.touches[0];
     dragDropStore.update(s => ({ ...s, x: touch.clientX, y: touch.clientY }));
-    
-    // If dragging upward, we can "ghost" the hand or just let it hide
-    if (touch.clientY < window.innerHeight * 0.7) {
-      // isMouseNear will trigger hide automatically based on our mouse move listener
-      // but for touch we might need to manually set it or similar
-      isMouseNear = true;
-    }
 
     // Prevent scrolling parent while dragging
     if (e.cancelable) e.preventDefault();
@@ -74,12 +60,10 @@
   }
 
   onMount(() => {
-    window.addEventListener('mousemove', handleGlobalMouseMove);
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd);
   });
   onDestroy(() => {
-    window.removeEventListener('mousemove', handleGlobalMouseMove);
     window.removeEventListener('touchmove', handleTouchMove);
     window.removeEventListener('touchend', handleTouchEnd);
   });
@@ -99,7 +83,7 @@
 <div 
   class="hand-outer" 
   class:disabled-hand={!$isMyTurnStore} 
-  class:hidden={($selectedCardIdStore && !isManuallyHidden && isMouseNear) || isManuallyHidden}
+  class:hidden={isManuallyHidden}
 >
   <div class="feed-indicator">
     <span>Catnip: {catnip}</span>

@@ -105,10 +105,10 @@ export function resolveInstantCardPlay(
     } else if (card.templateId === "random_evolution") {
       const validTargets = Object.values(state.units).filter(u => {
         const uStats = UNIT_DICTIONARY[u.type];
-        return u.owner === play.playerId && uStats && uStats.stage < 3;
+        return u.owner === play.playerId && uStats && uStats.stage < 3 && !u.spawnedThisTurn;
       });
       if (validTargets.length === 0) {
-        console.log(`[PhaseSystem] Random Evolution rejected: No Stage 1 or 2 cats on board.`);
+        console.log(`[PhaseSystem] Random Evolution rejected: No valid Stage 1 or 2 cats without sickness on board.`);
         isValidPlay = false;
       }
     }
@@ -371,7 +371,7 @@ export function resolveInstantCardPlay(
       else if (effect.type === "random_evolution") {
         const validTargets = Object.values(state.units).filter(u => {
           const uStats = UNIT_DICTIONARY[u.type];
-          return u.owner === play.playerId && uStats && uStats.stage < 3;
+          return u.owner === play.playerId && uStats && uStats.stage < 3 && !u.spawnedThisTurn;
         });
         
         const isStage3 = (c: import("@hex-strategy/shared").Card) => {
